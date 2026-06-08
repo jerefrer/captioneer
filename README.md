@@ -1,58 +1,35 @@
-# Captioneer
+<p align="center">
+  <img src="docs/icon.png" alt="Captioneer" width="168" />
+</p>
 
-Une application macOS native qui **extrait les légendes (descriptions) de vos photos**
-(TIFF, JPEG, PNG) à partir de leurs métadonnées et les rassemble dans un
-**fichier Excel** prêt à ouvrir.
+<h1 align="center">Captioneer</h1>
 
-C'est l'inverse d'un outil d'estampillage : ici on *lit* ce qui est déjà dans
-les images et on le recopie dans un tableur.
+<p align="center"><em>Pull the captions out of your photos.</em></p>
 
-## Utilisation
+<p align="center">
+  <a href="https://github.com/jerefrer/captioneer/releases/latest/download/Captioneer.dmg"><strong>Download for macOS</strong></a><br/>
+  <sub>Apple Silicon · macOS 14 or later</sub>
+</p>
 
-1. Glissez-déposez un dossier d'images (ou une sélection de fichiers)
-   directement dans l'application — ou cliquez pour les choisir.
-2. Captioneer lit les métadonnées de chaque image via ExifTool.
-3. Un fichier **`Extraction.xlsx`** est généré au même endroit, avec deux
-   colonnes : le nom du fichier et sa légende.
+<p align="center">
+  <img src="docs/screenshot.png" alt="Captioneer window" width="700" />
+</p>
 
-Ouvrez-le directement dans Excel, Numbers ou LibreOffice.
+## How it works
 
-### Quelle légende est extraite ?
+1. **Gather** — pick your photos (`.tif`, `.jpg`, `.png`) or a whole folder.
+2. **Drop** — drag them into Captioneer, or click to choose them.
+3. **Done** — an `Extraction.xlsx` lands right next to them: filename and caption, ready to open in Excel.
 
-Pour chaque image, Captioneer prend la **première valeur non vide** dans cet
-ordre de préférence :
+For each photo, Captioneer takes the first caption it finds — `Description` (XMP), then `Caption-Abstract` (IPTC), then `ImageDescription` (EXIF), then `Title`. Multi-line and bilingual EN/FR captions are kept intact. Images are read only, never modified.
 
-1. `XMP-dc:Description`
-2. `IPTC:Caption-Abstract`
-3. `EXIF:ImageDescription`
-4. `Title`
+## Build from source
 
-Les légendes multi-paragraphes et bilingues (EN/FR) sont conservées telles
-quelles, sauts de ligne et accents inclus. Les photos sans aucune légende
-apparaissent quand même, avec une description vide.
+```bash
+./build_app.sh            # build + sign + notarize → dist/Captioneer.dmg
+./build_app.sh --no-sign  # quick local build, unsigned
+```
 
-## Action Rapide (clic droit dans le Finder)
+---
 
-Vous pouvez créer une Action Rapide macOS pour extraire les légendes
-directement depuis le Finder :
-
-1. Ouvrez l'application **Raccourcis** (Shortcuts).
-2. Créez un nouveau raccourci (**+**).
-3. Dans les réglages (icône « i »), cochez **Utiliser comme action rapide** et
-   sélectionnez **Finder**.
-4. Configurez-le pour recevoir **Fichiers et dossiers**.
-5. Ajoutez l'action **Ouvrir un fichier** (Open File).
-6. Faites ouvrir le fichier de l'entrée avec l'application **Captioneer**.
-7. Enregistrez sous le nom « Extraire les légendes ».
-
-Désormais : clic droit sur un dossier ou une sélection > **Actions rapides** >
-**Extraire les légendes**.
-
-## Installation
-
-Téléchargez le dernier `Captioneer.dmg` depuis la
-[page des releases](https://github.com/jerefrer/captioneer/releases/latest),
-glissez l'app dans **Applications**, lancez. L'app est signée Developer ID +
-notarisée : aucun avertissement Gatekeeper.
-
-Cible : Apple Silicon (M1/M2/M3/M4), macOS 14+.
+<p align="center"><sub>By <a href="https://frerejeremy.me">Jérémy Frère</a></sub></p>
