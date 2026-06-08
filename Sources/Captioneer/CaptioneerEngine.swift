@@ -2,17 +2,20 @@ import Foundation
 import SwiftUI
 
 @MainActor
-final class CaptionExtractorEngine: ObservableObject {
+final class CaptioneerEngine: ObservableObject {
     @Published var state: AppState = .idle
 
     private var supportDir: URL {
         let lib = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return lib.appendingPathComponent("CaptionExtractor", isDirectory: true)
+        return lib.appendingPathComponent("Captioneer", isDirectory: true)
     }
 
     // MARK: - Public API
 
     func start(items: [URL]) {
+        // Ignore re-entrant starts: the cold-start service path and the
+        // notification path can both fire for the same launch.
+        guard case .idle = state else { return }
         Task { await runPipeline(items: items) }
     }
 
@@ -38,8 +41,8 @@ final class CaptionExtractorEngine: ObservableObject {
             updateProgress(.init(phase: .installingExifTool))
             let exiftool = try await ensureExifTool()
 
-            updateProgress(.init(phase: .readingSheet)) // we reuse this phase for "scanning"
-            
+            updateProgress(.init(phase: .scanningImages))
+
             // Where to save the output file?
             let firstItem = items[0]
             var outFolder = firstItem
@@ -49,10 +52,11 @@ final class CaptionExtractorEngine: ObservableObject {
             }
             let outPath = outFolder.appendingPathComponent("Extraction.xlsx")
 
-            updateProgress(.init(phase: .stamping, total: 0)) // indeterminate progress
+            updateProgress(.init(phase: .extracting, total: 0)) // indeterminate progress
 
             let extraction = try await extractMetadata(exiftool: exiftool, items: items)
-            
+                .sorted { $0.filename.localizedStandardCompare($1.filename) == .orderedAscending }
+
             guard !extraction.isEmpty else {
                 state = .done(.failure(.noMatches))
                 return
@@ -60,17 +64,24 @@ final class CaptionExtractorEngine: ObservableObject {
             
             try writeXLSX(data: extraction, to: outPath)
             
-            let files = extraction.map { FileResult(filename: $0.filename, caption: $0.caption, status: .stamped) }
+            let files = extraction.map { row -> FileResult in
+                let hasCaption = !row.caption.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                return FileResult(
+                    filename: row.filename,
+                    caption: hasCaption ? row.caption : nil,
+                    status: hasCaption ? .extracted : .noCaption
+                )
+            }
 
             let summary = ProcessSummary(
                 folder: outFolder,
-                sheetName: "Extraction.xlsx",
-                updatedCount: files.count,
+                outputName: "Extraction.xlsx",
+                extractedCount: files.count,
                 files: files
             )
             state = .done(.success(summary))
-            
-        } catch let error as CaptionExtractorError {
+
+        } catch let error as CaptioneerError {
             state = .done(.failure(error))
         } catch {
             state = .done(.failure(.parseFailed(error.localizedDescription)))
@@ -105,6 +116,7 @@ final class CaptionExtractorEngine: ObservableObject {
           <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
           <Default Extension="xml" ContentType="application/xml"/>
           <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+          <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
           <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
         </Types>
         """
@@ -136,24 +148,63 @@ final class CaptionExtractorEngine: ObservableObject {
         <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
         <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
           <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+          <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
         </Relationships>
         """
         try xlRels.write(to: xlRelsDir.appendingPathComponent("workbook.xml.rels"), atomically: true, encoding: .utf8)
-        
+
+        // Styles: bold white header on a sepia fill (style 1), wrapped top-aligned
+        // body for the description (style 2), top-aligned filename (style 3).
+        let styles = """
+        <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+          <fonts count="2">
+            <font><sz val="18"/><name val="Calibri"/></font>
+            <font><b/><sz val="18"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+          </fonts>
+          <fills count="3">
+            <fill><patternFill patternType="none"/></fill>
+            <fill><patternFill patternType="gray125"/></fill>
+            <fill><patternFill patternType="solid"><fgColor rgb="FF6B5B4D"/><bgColor indexed="64"/></patternFill></fill>
+          </fills>
+          <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+          <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+          <cellXfs count="4">
+            <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+            <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
+            <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
+            <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top"/></xf>
+          </cellXfs>
+          <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+        </styleSheet>
+        """
+        try styles.write(to: xlDir.appendingPathComponent("styles.xml"), atomically: true, encoding: .utf8)
+
         let wsDir = xlDir.appendingPathComponent("worksheets")
         try fm.createDirectory(at: wsDir, withIntermediateDirectories: true)
         
-        var sheetData = "<row r=\"1\"><c r=\"A1\" t=\"inlineStr\"><is><t>Filename</t></is></c><c r=\"B1\" t=\"inlineStr\"><is><t>Description</t></is></c></row>\n"
+        // Header row: style 1 (bold). r="1" height bumped for readability.
+        var sheetData = "<row r=\"1\" ht=\"30\" customHeight=\"1\"><c r=\"A1\" t=\"inlineStr\" s=\"1\"><is><t>Filename</t></is></c><c r=\"B1\" t=\"inlineStr\" s=\"1\"><is><t>Description</t></is></c></row>\n"
         for (i, row) in data.enumerated() {
             let r = i + 2
             let c1 = escapeXML(row.filename)
             let c2 = escapeXML(row.caption)
-            sheetData += "<row r=\"\(r)\"><c r=\"A\(r)\" t=\"inlineStr\"><is><t>\(c1)</t></is></c><c r=\"B\(r)\" t=\"inlineStr\"><is><t>\(c2)</t></is></c></row>\n"
+            // s="3": filename top-aligned. s="2": description wrapped. xml:space preserves newlines.
+            sheetData += "<row r=\"\(r)\"><c r=\"A\(r)\" t=\"inlineStr\" s=\"3\"><is><t xml:space=\"preserve\">\(c1)</t></is></c><c r=\"B\(r)\" t=\"inlineStr\" s=\"2\"><is><t xml:space=\"preserve\">\(c2)</t></is></c></row>\n"
         }
-        
+
         let sheet1 = """
         <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
         <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+          <sheetViews>
+            <sheetView workbookViewId="0">
+              <pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>
+            </sheetView>
+          </sheetViews>
+          <cols>
+            <col min="1" max="1" width="26" customWidth="1"/>
+            <col min="2" max="2" width="123.5" customWidth="1"/>
+          </cols>
           <sheetData>\(sheetData)</sheetData>
         </worksheet>
         """
@@ -175,53 +226,64 @@ final class CaptionExtractorEngine: ObservableObject {
         return try await Task.detached {
             let process = Process()
             process.executableURL = exiftool
-            
-            var args = ["-T", "-FileName", "-Title", "-Description", "-Caption-Abstract", "-ImageDescription", "-ext", "tif", "-ext", "tiff", "-ext", "jpg", "-ext", "jpeg", "-ext", "png"]
+
+            // -j (JSON) instead of -T (tab): captions are multi-paragraph EN/FR text.
+            // Tab output collapses newlines to "." and, for separators it doesn't
+            // collapse (U+2028/U+000B from the source .docx), a single record spilled
+            // onto several lines — splitting on newlines then pushed caption text into
+            // the filename column. JSON keeps the full multi-line value in one field.
+            var args = ["-j", "-charset", "utf8", "-FileName", "-Title", "-Description", "-Caption-Abstract", "-ImageDescription", "-ext", "tif", "-ext", "tiff", "-ext", "jpg", "-ext", "jpeg", "-ext", "png"]
             for item in items {
                 args.append(item.path)
             }
             process.arguments = args
-            
+
             let stdoutPipe = Pipe()
             let stderrPipe = Pipe()
             process.standardOutput = stdoutPipe
             process.standardError = stderrPipe
-            
+
             do {
                 try process.run()
-                
+
                 // Read data before waitUntilExit to avoid pipe buffer deadlocks (64KB limit)
                 let stdout = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
                 _ = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-                
+
                 process.waitUntilExit()
-                
-                guard let output = String(data: stdout, encoding: .utf8) else {
+
+                guard let objects = try? JSONSerialization.jsonObject(with: stdout) as? [[String: Any]] else {
                     return []
                 }
-                
+
+                // First non-empty caption field wins, in this preference order.
+                let captionKeys = ["Description", "Caption-Abstract", "ImageDescription", "Title"]
                 var results: [(String, String)] = []
-                let lines = output.components(separatedBy: .newlines)
-                for line in lines {
-                    if line.isEmpty { continue }
-                    let parts = line.components(separatedBy: "\t")
-                    if parts.isEmpty { continue }
-                    
-                    let filename = parts[0]
-                    // We look for the first non-empty caption field
+                for obj in objects {
+                    let filename = (obj["FileName"] as? String) ?? ""
+                    if filename.isEmpty { continue }
+
                     var caption = ""
-                    for i in 1..<parts.count {
-                        if parts[i] != "-" && !parts[i].isEmpty {
-                            caption = parts[i]
+                    for key in captionKeys {
+                        let value: String?
+                        if let s = obj[key] as? String {
+                            value = s
+                        } else if let n = obj[key] as? NSNumber {
+                            value = n.stringValue
+                        } else {
+                            value = nil
+                        }
+                        if let value, !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            caption = value
                             break
                         }
                     }
                     results.append((filename, caption))
                 }
-                
+
                 return results
             } catch {
-                throw CaptionExtractorError.exifToolFailed(error.localizedDescription)
+                throw CaptioneerError.exifToolFailed(error.localizedDescription)
             }
         }.value
     }
@@ -263,7 +325,7 @@ final class CaptionExtractorEngine: ObservableObject {
         let (verData, _) = try await session.data(from: versionURL)
         let version = String(data: verData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !version.isEmpty else {
-            throw CaptionExtractorError.exifToolUnavailable("Version not found on exiftool.org")
+            throw CaptioneerError.exifToolUnavailable("Version not found on exiftool.org")
         }
 
         let tgzURL = URL(string: "https://exiftool.org/Image-ExifTool-\(version).tar.gz")!
@@ -278,13 +340,13 @@ final class CaptionExtractorEngine: ObservableObject {
         try tar.run()
         tar.waitUntilExit()
         if tar.terminationStatus != 0 {
-            throw CaptionExtractorError.exifToolUnavailable("Extraction failed (tar)")
+            throw CaptioneerError.exifToolUnavailable("Extraction failed (tar)")
         }
 
         let exiftoolURL = supportDir.appendingPathComponent("Image-ExifTool-\(version)").appendingPathComponent("exiftool")
         try? FileManager.default.setAttributes([.posixPermissions: NSNumber(value: Int16(0o755))], ofItemAtPath: exiftoolURL.path)
         guard FileManager.default.isExecutableFile(atPath: exiftoolURL.path) else {
-            throw CaptionExtractorError.exifToolUnavailable("Binary not found after extraction")
+            throw CaptioneerError.exifToolUnavailable("Binary not found after extraction")
         }
         return exiftoolURL
     }

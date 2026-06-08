@@ -3,7 +3,7 @@ import Foundation
 enum AppState {
     case idle
     case processing(ProcessingProgress)
-    case done(Result<ProcessSummary, CaptionExtractorError>)
+    case done(Result<ProcessSummary, CaptioneerError>)
 }
 
 struct ProcessingProgress {
@@ -13,22 +13,20 @@ struct ProcessingProgress {
     var currentFile: String? = nil
 
     enum Phase {
-        case scanning           // listing files
         case installingExifTool // download exiftool, 1st run
-        case readingSheet       // Not used really, but kept for compat
-        case stamping           // extracting metadata
+        case scanningImages     // listing the images to read
+        case extracting         // reading metadata + writing the spreadsheet
     }
 
     var label: String {
         switch phase {
-        case .scanning:           return "Scanning items…"
         case .installingExifTool: return "Installing ExifTool (first run)…"
-        case .readingSheet:       return "Scanning images…"
-        case .stamping:           return "Extracting metadata…"
+        case .scanningImages:     return "Scanning images…"
+        case .extracting:         return "Extracting captions…"
         }
     }
 
-    var isDeterminate: Bool { phase == .stamping && total > 0 }
+    var isDeterminate: Bool { phase == .extracting && total > 0 }
     var fraction: Double {
         guard total > 0 else { return 0 }
         return Double(current) / Double(total)
@@ -37,13 +35,12 @@ struct ProcessingProgress {
 
 struct ProcessSummary {
     let folder: URL
-    let sheetName: String
-    let updatedCount: Int
+    let outputName: String
+    let extractedCount: Int
     let files: [FileResult]
 
-    var stampedCount: Int    { files.filter { $0.status == .stamped }.count }
-    var noCaptionCount: Int  { files.filter { $0.status == .noCaption }.count }
-    var missingFileCount: Int { files.filter { $0.status == .missingFile }.count }
+    var withCaptionCount: Int { files.filter { $0.status == .extracted }.count }
+    var noCaptionCount: Int   { files.filter { $0.status == .noCaption }.count }
 }
 
 struct FileResult: Identifiable, Equatable {
@@ -53,15 +50,12 @@ struct FileResult: Identifiable, Equatable {
     let status: Status
 
     enum Status: Equatable {
-        case stamped       // extracted successfully
-        case noCaption     // no caption found
-        case missingFile   // not an image
+        case extracted     // caption read successfully
+        case noCaption     // image had no caption metadata
     }
 }
 
-enum CaptionExtractorError: LocalizedError {
-    case noSheetFound
-    case multipleSheets([String])
+enum CaptioneerError: LocalizedError {
     case parseFailed(String)
     case noMatches
     case exifToolUnavailable(String)
@@ -69,14 +63,10 @@ enum CaptionExtractorError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .noSheetFound:
-            return "No supported files found."
-        case .multipleSheets(let names):
-            return "Multiple files found: " + names.joined(separator: ", ")
         case .parseFailed(let msg):
             return "Error reading metadata: " + msg
         case .noMatches:
-            return "No metadata or images found."
+            return "No images found to read."
         case .exifToolUnavailable(let msg):
             return "ExifTool couldn’t be installed: \(msg)\n\nCheck your internet connection."
         case .exifToolFailed(let msg):

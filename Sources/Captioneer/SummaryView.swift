@@ -17,7 +17,7 @@ struct SummaryView: View {
                     .font(Theme.titleFont)
                     .foregroundStyle(Theme.ink)
 
-                Text("\(summary.updatedCount) items extracted to \(summary.sheetName)")
+                Text("\(summary.extractedCount) items extracted to \(summary.outputName)")
                     .font(Theme.bodyFont)
                     .foregroundStyle(Theme.muted)
             }

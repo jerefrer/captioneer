@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ErrorView: View {
-    let error: CaptionExtractorError
+    let error: CaptioneerError
     let onReset: () -> Void
 
     var body: some View {

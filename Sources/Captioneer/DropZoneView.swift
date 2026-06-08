@@ -23,7 +23,7 @@ struct DropZoneView: View {
                         .foregroundStyle(Theme.inkSoft)
                 }
 
-                Text("Extracts captions/legends from photos\nand creates an Excel-compatible CSV file.")
+                Text("Extracts captions/legends from photos\nand creates an Excel spreadsheet.")
                     .font(Theme.bodyFont)
                     .foregroundStyle(Theme.muted)
                     .multilineTextAlignment(.center)

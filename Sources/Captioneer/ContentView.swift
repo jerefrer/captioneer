@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var engine = CaptionExtractorEngine()
+    @StateObject private var engine = CaptioneerEngine()
 
     var body: some View {
         ZStack {
@@ -25,6 +25,18 @@ struct ContentView: View {
         }
         .frame(minWidth: 580, minHeight: 540)
         .onAppear {
+            // Cold start via the Finder "Extract Captions" service: handleServices
+            // fires (and posts its notification) before .onReceive is wired up, so the
+            // notification is missed. The URLs are stashed in pendingServiceURLs — pick
+            // them up here, otherwise nothing runs until the app is relaunched.
+            if let pending = AppDelegate.pendingServiceURLs, !pending.isEmpty {
+                AppDelegate.pendingServiceURLs = nil
+                engine.startedAutomatically = true
+                AppDelegate.bringToFront()
+                engine.start(items: pending)
+                return
+            }
+
             let args = ProcessInfo.processInfo.arguments.dropFirst()
             if !args.isEmpty {
                 let paths = args.filter { !$0.hasPrefix("-") }
@@ -38,6 +50,7 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("OpenFilesNotification"))) { notification in
             if let urls = notification.object as? [URL] {
                 engine.startedAutomatically = true
+                AppDelegate.bringToFront()
                 engine.start(items: urls)
             }
         }

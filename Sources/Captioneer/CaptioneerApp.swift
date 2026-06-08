@@ -8,8 +8,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.servicesProvider = self
     }
 
+    /// Force the app's window in front of whoever launched us (Finder).
+    /// `activate(ignoringOtherApps:)` alone is unreliable on macOS 14+, so we
+    /// also `orderFrontRegardless()` every window and retry a few times to ride
+    /// out the cold-start window where no window exists yet.
+    static func bringToFront() {
+        func raise() {
+            NSApp.setActivationPolicy(.regular)
+            NSApp.activate(ignoringOtherApps: true)
+            for window in NSApp.windows {
+                window.makeKeyAndOrderFront(nil)
+                window.orderFrontRegardless()
+            }
+        }
+        raise()
+        for delay in [0.1, 0.3, 0.6] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { raise() }
+        }
+    }
+
     func application(_ application: NSApplication, open urls: [URL]) {
+        // Stash as well: on cold start this can arrive before ContentView's
+        // .onReceive is listening, so onAppear consumes pendingServiceURLs instead.
+        AppDelegate.pendingServiceURLs = urls
         NotificationCenter.default.post(name: Notification.Name("OpenFilesNotification"), object: urls)
+        AppDelegate.bringToFront()
     }
 
     @objc func handleServices(_ pasteboard: NSPasteboard, userData: String?, error: AutoreleasingUnsafeMutablePointer<NSString>) {
@@ -17,17 +40,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // Store for pickup by ContentView, and also post notification in case the view is already listening
             AppDelegate.pendingServiceURLs = urls
             NotificationCenter.default.post(name: Notification.Name("OpenFilesNotification"), object: urls)
+            AppDelegate.bringToFront()
         }
     }
 }
 
 @main
-struct CaptionExtractorApp: App {
+struct CaptioneerApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var updaterController = UpdaterController()
 
     var body: some Scene {
-        Window("CaptionExtractor", id: "CaptionExtractor-main") {
+        Window("Captioneer", id: "Captioneer-main") {
             ContentView()
         }
         .windowStyle(.hiddenTitleBar)
@@ -38,7 +62,7 @@ struct CaptionExtractorApp: App {
                 CheckForUpdatesMenuItem(controller: updaterController)
             }
             CommandGroup(replacing: .help) {
-                Link("CaptionExtractor Help", destination: URL(string: "https://github.com/jerefrer/CaptionExtractor")!)
+                Link("Captioneer Help", destination: URL(string: "https://github.com/jerefrer/captioneer")!)
             }
         }
     }
