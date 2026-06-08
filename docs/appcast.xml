@@ -1,21 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
-    <title>Imprint</title>
-    <link>https://jerefrer.github.io/imprint/appcast.xml</link>
-    <description>Imprint updates feed</description>
+    <title>Captioneer</title>
+    <link>https://jerefrer.github.io/captioneer/appcast.xml</link>
+    <description>Captioneer updates feed</description>
     <language>en</language>
-    <item>
-      <title>Imprint v1.2.1</title>
-      <pubDate>Sat, 30 May 2026 09:40:07 +0000</pubDate>
-      <sparkle:version>1.2.1</sparkle:version>
-      <sparkle:shortVersionString>1.2.1</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <enclosure
-        url="https://github.com/jerefrer/imprint/releases/download/v1.2.1/Imprint.dmg"
-        length="5149425"
-        type="application/octet-stream"
-        sparkle:edSignature="iViz7TpMpTk6WqnwYgveQEpFzvA5WLmoHzAJJkMeB+I1q/2eTefLzVa3Ax8ETye8A6cbXzPc7KvX3jGWuqrTDQ==" />
-    </item>
+    <!-- Aucune release publiée pour l'instant. La CI (release.yml) régénère
+         ce fichier avec une <item> signée EdDSA à chaque tag vX.Y.Z. -->
   </channel>
 </rss>

@@ -5,138 +5,126 @@
 
 ## Objectif
 
-**CaptionExtractor** — outil macOS **sans terminal** permettant à un photographe (ou
-n'importe quel utilisateur non technique) d'appliquer les **légendes d'un
-fichier Excel/CSV** aux **métadonnées de ses fichiers TIFF**, en remplacement
-d'une procédure ExifTool en ligne de commande jugée trop compliquée.
+**Captioneer** — outil macOS **sans terminal** permettant à un photographe (ou
+n'importe quel utilisateur non technique) d'**extraire les légendes (descriptions)
+déjà présentes dans les métadonnées de ses images** (TIFF, JPEG, PNG) et de les
+rassembler dans un **fichier Excel** (`Extraction.xlsx`).
+
+C'est l'**inverse** d'un outil d'estampillage : on *lit* ce qui est dans les
+images, on ne l'y écrit pas. (Le dépôt portait auparavant le nom d'une app
+inverse « Imprint » qui écrivait des légendes Excel→TIFF ; tout son code et sa
+doc ont été remplacés.)
 
 Cible : Apple Silicon (M1/M2/M3/M4), macOS 14+.
 
 ## Comportement attendu
 
-1. L'utilisateur place dans **un même dossier** ses `.tif` + un fichier de
-   légendes `.xlsx` ou `.csv` avec colonnes **`Filename`** et **`Description`**.
-2. Double-clic sur `CaptionExtractor.app` → dialogue natif de choix du dossier.
-3. L'app lit le tableau, associe chaque ligne au `.tif` du même nom
-   (insensible à la casse, `IMG_001.TIF` ↔ `IMG_001.tif`) et écrit la légende
-   (texte bilingue EN/FR gardé **tel quel**) dans :
-   - `IPTC:Caption-Abstract`
-   - `XMP-dc:Description`
-   - `EXIF:ImageDescription`
-4. Résumé affiché (légendées / lignes sans photo / photos sans légende).
+1. L'utilisateur glisse-dépose un **dossier d'images** ou une **sélection de
+   fichiers** dans `Captioneer.app` (ou clique pour les choisir ; ou clic droit
+   Finder → Action Rapide « Extraire les légendes »).
+2. L'app lit les métadonnées de chaque image via ExifTool (`exiftool -j`, en
+   **lecture seule** — les images ne sont jamais modifiées).
+3. Pour chaque image, la **première valeur non vide** est retenue dans cet ordre :
+   `XMP-dc:Description` → `IPTC:Caption-Abstract` → `EXIF:ImageDescription` → `Title`.
+4. Un `Extraction.xlsx` est écrit dans le dossier des images, deux colonnes
+   `Filename` / `Description`. Texte multiligne et bilingue EN/FR gardé tel quel.
+5. Résumé affiché : nombre d'items extraits + liste fichier/légende.
 
 ## Architecture
 
 ```
-Package.swift                  # manifeste SwiftPM (cible macOS 14)
-Sources/CaptionExtractor/
-  CaptionExtractorApp.swift             # @main, fenêtre
+Package.swift                  # manifeste SwiftPM (cible macOS 14, dép. Sparkle)
+Sources/Captioneer/
+  CaptioneerApp.swift          # @main, fenêtre, menu Sparkle, handler Services
   ContentView.swift            # racine, switch sur AppState
   DropZoneView.swift           # zone drag-drop + NSOpenPanel
-  ProcessingView.swift         # progression (déterminée ou indéterminée)
-  SummaryView.swift            # résumé + liste de fichiers avec checkmarks
+  ProcessingView.swift         # progression (indéterminée pendant l'extraction)
+  SummaryView.swift            # résumé + liste fichier/description
   ErrorView.swift              # état d'erreur
-  CaptionExtractorEngine.swift          # orchestration : trouve sheet, lance parse_sheet.pl,
-                               # installe ExifTool, lance exiftool en streaming
-  Models.swift                 # AppState, ProcessSummary, FileResult, CaptionExtractorError
+  CaptioneerEngine.swift       # orchestration : installe ExifTool, lit les
+                               # métadonnées (-j), construit l'.xlsx
+  Models.swift                 # AppState, ProcessingProgress, ProcessSummary,
+                               # FileResult, CaptioneerError
   Theme.swift                  # palette crème/sépia tirée de l'icône
-app/Info.plist                 # bundle .app (CFBundleExecutable = CaptionExtractor, icône CaptionExtractor.icns)
-app/parse_sheet.pl             # parseur xlsx/csv -> CSV compatible ExifTool (Perl cœur uniquement)
-app/make_icns.sh               # génère app/CaptionExtractor.icns depuis CaptionExtractor.icon/Assets/*.jpg
-app/CaptionExtractor.icns               # icône compilée (gitignorée, régénérée au build)
-CaptionExtractor.icon/                  # source de l'icône (image 1024×1024 + icon.json Icon Composer)
-build_app.sh                   # swift build + assemblage bundle + sign + DMG + notarise
-dist/                          # artéfacts de build (gitignoré)
-.build/                        # cache SwiftPM (gitignoré)
-README.md                      # README utilisateur (sexy, simple)
+  UpdaterController.swift      # wrapper Sparkle (auto-update)
+app/Info.plist                 # bundle .app (CFBundleExecutable = Captioneer)
+app/make_icns.sh               # génère app/Captioneer.icns depuis la 1re image
+                               # de Captioneer.icon/Assets/ (n'importe quel nom)
+app/Captioneer.icns            # icône compilée (gitignorée, régénérée au build)
+Captioneer.icon/               # source de l'icône (image 1024×1024 + icon.json)
+build_app.sh                   # swift build + bundle + sign + DMG + notarise
+docs/                          # GitHub Pages : index.html + appcast.xml Sparkle
+.github/workflows/release.yml  # CI : build/sign/notarise/appcast sur tag vX.Y.Z
+dist/, .build/                 # artéfacts de build (gitignorés)
 ```
 
-- **Architecture** : SwiftUI natif pour l'UI (drag-drop, progression, résumé).
-  Le binaire Mach-O appelle `parse_sheet.pl` (Perl) et `exiftool` (Perl aussi)
-  comme child processes via `Process`. ExifTool streame son `-progress` sur
-  stdout, `CaptionExtractorEngine` parse les lignes `========` pour mettre à jour la
-  progression en temps réel.
-- **`parse_sheet.pl`** n'utilise que des modules du cœur de Perl
-  (`IO::Uncompress::Unzip` pour décompresser le `.xlsx`). `/usr/bin/perl` suffit
-  (présent sur macOS, vérifié encore présent sur Tahoe). Gère : séparateur `,`
-  ou `;`, BOM UTF-8, guillemets, `""` échappés, **champs multilignes**.
-  Sortie : CSV stdout pour exiftool ; stderr avec `ASSOCIES=N`, `NON_TROUVES=N`,
-  `TIF_SANS_LEGENDE=N` et la liste de chaque fichier sous chaque section.
-- **ExifTool** : non bundlé. `CaptionExtractorEngine.ensureExifTool()` cherche
+- **UI** : SwiftUI natif (drag-drop, progression, résumé). Le binaire appelle
+  `exiftool` (Perl) en child process via `Process`, en **lecture seule** (`-j`,
+  sortie JSON). On lit toute la sortie d'un coup (pas de streaming) ; le JSON
+  préserve les légendes multilignes là où une sortie tabulée les casserait.
+- **Génération de l'`.xlsx`** : `CaptioneerEngine.writeXLSX()` écrit à la main
+  les parties XML d'un classeur OOXML (Content_Types, workbook, styles,
+  worksheet) dans un dossier temporaire, puis les zippe via `/usr/bin/zip`.
+  Style : en-tête gras sur fond sépia, colonne Description en wrap top-aligné,
+  ligne d'en-tête gelée. `xml:space="preserve"` garde les sauts de ligne.
+- **ExifTool** : non bundlé. `CaptioneerEngine.ensureExifTool()` cherche
   `/usr/local/bin/exiftool`, `/opt/homebrew/bin/exiftool`, puis le PATH,
-  puis `~/Library/Application Support/CaptionExtractor/Image-ExifTool-VERSION/`,
+  puis `~/Library/Application Support/Captioneer/Image-ExifTool-VERSION/`,
   puis télécharge depuis exiftool.org (URLSession + tar).
-- Écriture forcée UTF-8 (`-codedcharacterset=utf8`), dates de fichier préservées
-  (`-P`), originaux écrasés en place (`-overwrite_original`).
-- La détection du tableau (dans `CaptionExtractorEngine.findSheet`) **ignore** les
-  fichiers temporaires/verrous (`~$*.xlsx`, `.~lock.*`, fichiers cachés). Si
-  plusieurs candidats, préfère le `.xlsx` ; sinon lève `CaptionExtractorError.multipleSheets`.
-- **Icône** : source dans `CaptionExtractor.icon/Assets/image-766264921340.jpg`
-  (polaroid vintage + traits de plume, 1024×1024). `app/make_icns.sh` la
-  convertit en `.icns` multi-résolution via `sips` + `iconutil`. Le format Icon
-  Composer (`CaptionExtractor.icon/icon.json`) n'est pas utilisé en l'état : l'image est
-  une icône finie, pas une couche pour le rendu Liquid Glass.
-- **Concurrence Swift 6** : l'état mutable partagé entre les readability
-  handlers d'ExifTool est encapsulé dans une classe `ExifToolRunState`
-  (`@unchecked Sendable`) pour éviter les captures mutables interdites en
-  strict concurrency mode.
+- **Extensions lues** : tif, tiff, jpg, jpeg, png. Les images sans légende
+  apparaissent quand même (statut `.noCaption`, description vide).
+- **Concurrence** : `extractMetadata` tourne dans un `Task.detached` ; l'engine
+  est `@MainActor`.
+- **Sparkle** : auto-update. `SUFeedURL =
+  https://jerefrer.github.io/captioneer/appcast.xml`, clé publique EdDSA dans
+  l'Info.plist. La CI régénère `docs/appcast.xml` (item signé) à chaque tag.
 
 ## Construire & signer
 
 ```bash
-./build_app.sh --setup-credentials   # 1re fois : stocke le mdp d'app dans le trousseau
+./build_app.sh --setup-credentials   # 1re fois : stocke le mdp d'app (trousseau)
 ./build_app.sh                       # build + signe + notarise + agrafe -> DMG
+./build_app.sh --no-sign             # dev : bundle + DMG bruts (rapide)
 ```
 
-Sortie : `dist/CaptionExtractor.dmg` — DMG signé + notarisé + agrafé, avec raccourci
-« Applications » pour le glisser-déposer. C'est ce fichier qui est envoyé à
-l'utilisateur final.
+Sortie : `dist/Captioneer.dmg` — DMG signé + notarisé + agrafé, avec raccourci
+« Applications ». C'est le fichier envoyé à l'utilisateur final.
 
-Options :
-
-- `--no-notarize` : signe seulement, pas de round-trip Apple (rapide, hors-ligne).
-- `--no-sign` : DMG brut, pour développement.
-- Identité utilisée : `Developer ID Application: Jeremy Frere (3J4HCZ8V25)`,
-  Team ID `3J4HCZ8V25`. Surchargeable via les vars `SIGN_IDENTITY`, `APPLE_ID`,
-  `TEAM_ID`, `KEYCHAIN_PROFILE`.
-- Le profil de notarisation est stocké dans le trousseau macOS sous le nom
-  `CaptionExtractor-notarize` (créé par `--setup-credentials` ; demande le mot de passe
-  d'app spécifique généré sur appleid.apple.com).
-- `CFBundleIdentifier` : `com.jeremyfrere.CaptionExtractor`.
+- Identité : `Developer ID Application: Jeremy Frere (3J4HCZ8V25)`, Team ID
+  `3J4HCZ8V25`. Surchargeable via `SIGN_IDENTITY`, `APPLE_ID`, `TEAM_ID`,
+  `KEYCHAIN_PROFILE`.
+- Profil de notarisation (local) attendu sous le nom `Captioneer-notarize`
+  (créé par `--setup-credentials`). La CI en crée un éphémère `captioneer-notarize`.
+- `CFBundleIdentifier` : `com.jeremyfrere.Captioneer`.
+- Dépôt / Pages : `github.com/jerefrer/captioneer`, `jerefrer.github.io/captioneer`.
 
 ## État / ce qui a été vérifié
 
-- ✅ Parseur testé sur des fixtures réelles (Excel et CSV) : ~23 légendes
-  associées, 0 manquante, multilignes + accents OK.
-- ✅ Pipeline `codesign` + DMG + notarisation Apple end-to-end (2026-05-29).
-- ✅ Écriture ExifTool validée sur de vrais TIFF : Bridge/Photoshop
-  affichent correctement la « Description », accents OK.
-- ✅ Compilation SwiftUI release, 540 Ko de binaire, aucun warning.
-- ⚠️ **Mode strict Swift 6** : non testé. Les captures mutables ont été
-  encapsulées dans `ExifToolRunState` mais le projet compile en mode Swift 5
-  (warnings traités).
-
-## Gatekeeper / diffusion
-
-- App **signée Developer ID + notarisée + agrafée** (depuis 2026-05-29).
-  Plus d'avertissement Gatekeeper côté utilisateur : double-clic direct sur
-  le DMG, glisser dans Applications, lancer.
-- Diffusion : envoyer le `.dmg` (par mail, AirDrop, clé USB, lien…).
+- ✅ **Migration depuis CaptionExtractor/Imprint → Captioneer (2026-06-08)** :
+  module Swift, bundle ID, scripts, CI, site, README, doc renommés ; reliquats
+  de l'app inverse (`stamping`/`stamped`/`readingSheet`/`sheetName`,
+  parse_sheet.pl, erreurs `noSheetFound`/`multipleSheets`) supprimés.
+- ✅ `swift build -c release --arch arm64` : compile, 0 warning, binaire `Captioneer`.
+- ✅ `./build_app.sh --no-sign` : bundle + DMG assemblés de bout en bout, icône
+  régénérée via le nouveau glob.
+- ⚠️ **Pas re-testé** : extraction sur de vrais TIFF depuis cette migration
+  (la logique d'extraction n'a pas changé, seulement les noms). Pipeline de
+  signature/notarisation **non rejoué** depuis le rename.
+- ⚠️ Le dépôt n'a **pas encore de remote git** configuré.
 
 ## TODO / pistes d'évolution
 
-- [x] GUI native SwiftUI (drag-and-drop, progression, résumé checklist) — fait
-      sur la branche feature/swiftui-ui le 2026-05-29.
-- [ ] Screenshots de l'app pour le README et la future page GitHub Pages.
-- [ ] Page GitHub Pages de présentation (univers polaroid vintage de l'icône).
-- [ ] Universal binary (arm64 + x86_64) pour les Macs Intel restants.
-- [ ] Mémoriser le dernier dossier utilisé (par ex. dans le dossier Support).
-- [ ] Colonnes optionnelles supplémentaires : mots-clés (`IPTC:Keywords`),
-      titre (`Headline`), auteur/copyright.
-- [ ] Prise en charge d'autres formats (JPEG, DNG) si besoin.
+- [ ] **Nouvelle icône** : variante « extraction » de l'univers polaroid (traits
+      de plume qui sortent de la photo). Déposer le 1024×1024 dans
+      `Captioneer.icon/Assets/` (n'importe quel nom .png/.jpg) → régénérée au build.
+      Mettre aussi à jour `docs/icon.png` et `docs/screenshot.png`.
+- [ ] Créer le dépôt GitHub `jerefrer/captioneer` + activer GitHub Pages (docs/).
+- [ ] Re-tester extraction sur de vrais fichiers + rejouer le build signé/notarisé.
+- [ ] Universal binary (arm64 + x86_64) pour les Macs Intel.
+- [ ] Colonnes optionnelles en sortie (mots-clés, titre, auteur/copyright).
 
 ## Notes de contexte
 
-- Le dossier parent (`../`) contenait les TIFF de test + les fichiers de
-  légendes d'origine. Le dépôt Git ne suit que `legendes-tiff/`.
+- Le dossier `IGNORE/` (gitignoré) contient des données de test/légendes, pas
+  l'app — à ignorer lors des recherches de reliquats.
 - Préférences de l'utilisateur (Jeremy) : réponses concises et directes.

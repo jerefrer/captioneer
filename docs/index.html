@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Imprint — Caption your TIFFs in a single drop</title>
-  <meta name="description" content="A tiny macOS app that writes captions from an Excel or CSV file into the metadata of your TIFF photos. Drag, drop, done." />
+  <title>Captioneer — Pull the captions out of your photos</title>
+  <meta name="description" content="A tiny macOS app that reads the captions stored in your photos' metadata and collects them into a ready-to-open Excel spreadsheet. Drag, drop, done." />
   <link rel="icon" type="image/png" href="icon.png" />
-  <meta property="og:title" content="Imprint" />
-  <meta property="og:description" content="Caption your TIFFs in a single drop." />
+  <meta property="og:title" content="Captioneer" />
+  <meta property="og:description" content="Pull the captions out of your photos, into one spreadsheet." />
   <meta property="og:image" content="icon.png" />
   <meta property="og:type" content="website" />
   <style>
@@ -308,15 +308,15 @@
 <body>
   <main>
     <section class="hero">
-      <img src="icon.png" alt="Imprint" class="app-icon" />
-      <h1>Imprint</h1>
-      <p class="tagline">Caption your TIFFs in a single drop.</p>
-      <a class="cta" href="https://github.com/jerefrer/imprint/releases/latest/download/Imprint.dmg" id="download-link" rel="noopener">Download Imprint</a>
+      <img src="icon.png" alt="Captioneer" class="app-icon" />
+      <h1>Captioneer</h1>
+      <p class="tagline">Pull the captions out of your photos.</p>
+      <a class="cta" href="https://github.com/jerefrer/captioneer/releases/latest/download/Captioneer.dmg" id="download-link" rel="noopener">Download Captioneer</a>
       <span class="cta-meta" id="version-info">Apple Silicon Mac · macOS 14 or later</span>
     </section>
 
     <section class="screenshot">
-      <img src="screenshot.png" alt="Imprint window with a drag-and-drop zone" />
+      <img src="screenshot.png" alt="Captioneer window with a drag-and-drop zone" />
     </section>
 
     <section class="how">
@@ -325,28 +325,28 @@
         <div class="step">
           <span class="num">1</span>
           <h3>Gather</h3>
-          <p>Put your <code>.tif</code> photos and your caption file — Excel or CSV — in the same folder.</p>
+          <p>Pick the photos you want to read — <code>.tif</code>, <code>.jpg</code>, <code>.png</code> — or a whole folder.</p>
         </div>
         <div class="step">
           <span class="num">2</span>
           <h3>Drop</h3>
-          <p>Drag the folder into Imprint, or click to choose it.</p>
+          <p>Drag them into Captioneer, or click to choose them.</p>
         </div>
         <div class="step">
           <span class="num">3</span>
           <h3>Done</h3>
-          <p>Captions land in the <em>Description</em> field, ready for Bridge, Photoshop, Lightroom, agencies.</p>
+          <p>An <code>Extraction.xlsx</code> lands right next to them — filename and caption, ready to open in Excel.</p>
         </div>
       </div>
     </section>
 
     <section class="tips">
-      <h2>Inside the spreadsheet</h2>
-      <p>Two columns minimum: <code>Filename</code> and <code>Description</code>. From there, optional:</p>
+      <h2>What ends up in the spreadsheet</h2>
+      <p>Two columns: <code>Filename</code> and <code>Description</code>. For each photo, Captioneer takes the first caption it finds, in this order:</p>
       <ul>
-        <li>Split into <code>Description (FR)</code> + <code>Description (EN)</code> — Imprint joins them.</li>
-        <li>List several filenames in one cell (comma-separated) to share a caption across photos.</li>
-        <li>Merge Description cells vertically to apply the same caption to a range of rows.</li>
+        <li><code>Description</code> (XMP-dc), then <code>Caption-Abstract</code> (IPTC), then <code>ImageDescription</code> (EXIF), then <code>Title</code>.</li>
+        <li>Multi-paragraph and bilingual EN/FR captions are kept intact, line breaks and accents included.</li>
+        <li>Photos with no caption still appear — with an empty description — so nothing is silently dropped.</li>
       </ul>
     </section>
 
@@ -357,7 +357,7 @@
           <span>By <span class="name">Jérémy Frère</span></span>
         </a>
         <span class="footer-sep" aria-hidden="true"></span>
-        <a class="gh-link" href="https://github.com/jerefrer/imprint">
+        <a class="gh-link" href="https://github.com/jerefrer/captioneer">
           <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true">
             <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/>
           </svg>
@@ -370,9 +370,9 @@
   <script>
     // Récupère la dernière release pour afficher la version sous le bouton.
     // Le lien de téléchargement marche déjà sans JS via l'URL magique
-    // /releases/latest/download/Imprint.dmg.
+    // /releases/latest/download/Captioneer.dmg.
     (function () {
-      fetch('https://api.github.com/repos/jerefrer/imprint/releases/latest', {
+      fetch('https://api.github.com/repos/jerefrer/captioneer/releases/latest', {
         headers: { 'Accept': 'application/vnd.github+json' }
       })
         .then(function (r) { return r.ok ? r.json() : null; })
