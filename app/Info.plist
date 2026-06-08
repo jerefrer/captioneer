@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>CaptionExtractor</string>
+    <key>CFBundleDisplayName</key>
+    <string>CaptionExtractor</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.jeremyfrere.CaptionExtractor</string>
+    <key>CFBundleVersion</key>
+    <string>1.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleExecutable</key>
+    <string>CaptionExtractor</string>
+    <key>CFBundleIconFile</key>
+    <string>CaptionExtractor</string>
+        <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>All Files and Folders</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.item</string>
+                <string>public.folder</string>
+            </array>
+        </dict>
+    </array>
+        <key>NSServices</key>
+    <array>
+        <dict>
+            <key>NSMenuItem</key>
+            <dict>
+                <key>default</key>
+                <string>Extract Captions</string>
+            </dict>
+            <key>NSMessage</key>
+            <string>handleServices</string>
+            <key>NSPortName</key>
+            <string>CaptionExtractor</string>
+            <key>NSRequiredContext</key>
+            <dict/>
+            <key>NSSendTypes</key>
+            <array>
+                <string>public.file-url</string>
+                <string>public.directory</string>
+            </array>
+        </dict>
+    </array>
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.photography</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSHumanReadableCopyright</key>
+    <string>© 2026 Jeremy Frere</string>
+
+    <!-- Sparkle auto-updater -->
+    <key>SUFeedURL</key>
+    <string>https://jerefrer.github.io/CaptionExtractor/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>YtVU6XHCC0Mb2F/ZnND0y+TgaRzixHeueYcfbE6bcwY=</string>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
+    <key>SUScheduledCheckInterval</key>
+    <integer>86400</integer>
+</dict>
+</plist>

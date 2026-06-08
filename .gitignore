@@ -1,0 +1,15 @@
+# Artéfacts de build (régénérés par build_app.sh)
+dist/
+.build/
+.build-tmp/
+.swiftpm/
+# Package.resolved est commité pour figer la version exacte des dépendances
+# SwiftPM dans le CI (Sparkle 2.x).
+
+# Icône compilée (régénérée depuis Imprint.icon/ par app/make_icns.sh)
+app/Imprint.icns
+
+# Divers macOS
+.DS_Store
+
+IGNORE/
