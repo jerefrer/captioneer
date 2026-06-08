@@ -6,16 +6,16 @@
     <description>Captioneer updates feed</description>
     <language>en</language>
     <item>
-      <title>Captioneer v1.0.0</title>
-      <pubDate>Mon, 08 Jun 2026 20:56:24 +0000</pubDate>
-      <sparkle:version>1.0.0</sparkle:version>
-      <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+      <title>Captioneer v1.0.1</title>
+      <pubDate>Mon, 08 Jun 2026 21:01:02 +0000</pubDate>
+      <sparkle:version>1.0.1</sparkle:version>
+      <sparkle:shortVersionString>1.0.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/jerefrer/captioneer/releases/download/v1.0.0/Captioneer.dmg"
-        length="5365028"
+        url="https://github.com/jerefrer/captioneer/releases/download/v1.0.1/Captioneer.dmg"
+        length="5365052"
         type="application/octet-stream"
-        sparkle:edSignature="mTLkAZm3fBsqmksO5bNtKpqOC4Vmt9xPgjyvnXrvSFfS6rSfVtMHjZ/yDrA4i041dET+fFf5vrNtHs6HP7HkDw==" />
+        sparkle:edSignature="qlt9CJTV4hP64R6kR4N3moAh9JDu64XHFEQc1V85zATMg13L8poC5vsOmFK0dtjbnwo8rcPz1r/B59Ss5DiKBw==" />
     </item>
   </channel>
 </rss>
