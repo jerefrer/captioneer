@@ -8,7 +8,7 @@
 **Captioneer** — outil macOS **sans terminal** permettant à un photographe (ou
 n'importe quel utilisateur non technique) d'**extraire les légendes (descriptions)
 déjà présentes dans les métadonnées de ses images** (TIFF, JPEG, PNG) et de les
-rassembler dans un **fichier Excel** (`Extraction.xlsx`).
+rassembler dans un **fichier Excel** (`Captions.xlsx`).
 
 C'est l'**inverse** d'un outil d'estampillage : on *lit* ce qui est dans les
 images, on ne l'y écrit pas. (Le dépôt portait auparavant le nom d'une app
@@ -26,7 +26,7 @@ Cible : Apple Silicon (M1/M2/M3/M4), macOS 14+.
    **lecture seule** — les images ne sont jamais modifiées).
 3. Pour chaque image, la **première valeur non vide** est retenue dans cet ordre :
    `XMP-dc:Description` → `IPTC:Caption-Abstract` → `EXIF:ImageDescription` → `Title`.
-4. Un `Extraction.xlsx` est écrit dans le dossier des images, deux colonnes
+4. Un `Captions.xlsx` est écrit dans le dossier des images, deux colonnes
    `Filename` / `Description`. Texte multiligne et bilingue EN/FR gardé tel quel.
 5. Résumé affiché : nombre d'items extraits + liste fichier/légende.
 

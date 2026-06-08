@@ -50,7 +50,7 @@ final class CaptioneerEngine: ObservableObject {
             if FileManager.default.fileExists(atPath: firstItem.path, isDirectory: &isDir), !isDir.boolValue {
                 outFolder = firstItem.deletingLastPathComponent()
             }
-            let outPath = outFolder.appendingPathComponent("Extraction.xlsx")
+            let outPath = outFolder.appendingPathComponent("Captions.xlsx")
 
             updateProgress(.init(phase: .extracting, total: 0)) // indeterminate progress
 
@@ -75,7 +75,7 @@ final class CaptioneerEngine: ObservableObject {
 
             let summary = ProcessSummary(
                 folder: outFolder,
-                outputName: "Extraction.xlsx",
+                outputName: "Captions.xlsx",
                 extractedCount: files.count,
                 files: files
             )

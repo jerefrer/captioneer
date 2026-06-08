@@ -19,7 +19,7 @@
 
 1. **Gather** — pick your photos (`.tif`, `.jpg`, `.png`) or a whole folder.
 2. **Drop** — drag them into Captioneer, or click to choose them.
-3. **Done** — an `Extraction.xlsx` lands right next to them: filename and caption, ready to open in Excel.
+3. **Done** — a `Captions.xlsx` lands right next to them: filename and caption, ready to open in Excel.
 
 For each photo, Captioneer takes the first caption it finds — `Description` (XMP), then `Caption-Abstract` (IPTC), then `ImageDescription` (EXIF), then `Title`. Multi-line and bilingual EN/FR captions are kept intact. Images are read only, never modified.
 
