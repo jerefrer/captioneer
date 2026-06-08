@@ -5,7 +5,17 @@
     <link>https://jerefrer.github.io/captioneer/appcast.xml</link>
     <description>Captioneer updates feed</description>
     <language>en</language>
-    <!-- Aucune release publiée pour l'instant. La CI (release.yml) régénère
-         ce fichier avec une <item> signée EdDSA à chaque tag vX.Y.Z. -->
+    <item>
+      <title>Captioneer v1.0.0</title>
+      <pubDate>Mon, 08 Jun 2026 20:56:24 +0000</pubDate>
+      <sparkle:version>1.0.0</sparkle:version>
+      <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/jerefrer/captioneer/releases/download/v1.0.0/Captioneer.dmg"
+        length="5365028"
+        type="application/octet-stream"
+        sparkle:edSignature="mTLkAZm3fBsqmksO5bNtKpqOC4Vmt9xPgjyvnXrvSFfS6rSfVtMHjZ/yDrA4i041dET+fFf5vrNtHs6HP7HkDw==" />
+    </item>
   </channel>
 </rss>
