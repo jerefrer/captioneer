@@ -1,15 +1,19 @@
 #!/bin/bash
-# Génère app/CaptionExtractor.icns à partir du fichier source PNG/JPG 1024x1024.
-# Usage : ./app/make_icns.sh path/to/source-1024x1024.png
+# Génère app/Captioneer.icns à partir du fichier source PNG/JPG 1024x1024.
+# Usage : ./app/make_icns.sh [path/to/source-1024x1024.png]
+# Sans argument : prend la 1re image trouvée dans Captioneer.icon/Assets/
+# (n'importe quel nom de fichier .png/.jpg/.jpeg).
 set -euo pipefail
-SRC="${1:-CaptionExtractor.icon/Assets/image-766264921340.jpg}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
-OUT_ICNS="$HERE/CaptionExtractor.icns"
+REPO="$(dirname "$HERE")"
+DEFAULT_SRC="$(find "$REPO/Captioneer.icon/Assets" -maxdepth 1 -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \) 2>/dev/null | sort | head -1)"
+SRC="${1:-$DEFAULT_SRC}"
+OUT_ICNS="$HERE/Captioneer.icns"
 
-[ -f "$SRC" ] || { echo "Source introuvable : $SRC" >&2; exit 1; }
+[ -n "$SRC" ] && [ -f "$SRC" ] || { echo "Source introuvable : aucune image dans Captioneer.icon/Assets/ (ni argument fourni)" >&2; exit 1; }
 
-WORK="$(/usr/bin/mktemp -d /tmp/CaptionExtractor-icns.XXXXXX)"
-SET="$WORK/CaptionExtractor.iconset"
+WORK="$(/usr/bin/mktemp -d /tmp/Captioneer-icns.XXXXXX)"
+SET="$WORK/Captioneer.iconset"
 mkdir -p "$SET"
 
 PNG="$WORK/source.png"

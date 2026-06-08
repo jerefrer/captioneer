@@ -63,7 +63,7 @@ jobs:
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          xcrun notarytool store-credentials "imprint-notarize" \
+          xcrun notarytool store-credentials "captioneer-notarize" \
             --apple-id  "$APPLE_ID" \
             --team-id   "$APPLE_TEAM_ID" \
             --password  "$APPLE_PASSWORD"
@@ -72,7 +72,7 @@ jobs:
         id: build
         env:
           SIGN_IDENTITY:    ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          KEYCHAIN_PROFILE: imprint-notarize
+          KEYCHAIN_PROFILE: captioneer-notarize
           APPLE_ID:         ${{ secrets.APPLE_ID }}
           TEAM_ID:          ${{ secrets.APPLE_TEAM_ID }}
         run: |
@@ -94,13 +94,13 @@ jobs:
           fi
           echo "=== Apple notarization log for $SUBMISSION_ID ==="
           xcrun notarytool log "$SUBMISSION_ID" \
-            --keychain-profile imprint-notarize || true
+            --keychain-profile captioneer-notarize || true
 
       - name: Verify the DMG
         run: |
           set -euo pipefail
-          spctl --assess --type open --context context:primary-signature -v dist/Imprint.dmg
-          ls -lh dist/Imprint.dmg
+          spctl --assess --type open --context context:primary-signature -v dist/Captioneer.dmg
+          ls -lh dist/Captioneer.dmg
 
       - name: Sign DMG with Sparkle EdDSA + generate appcast
         env:
@@ -117,7 +117,7 @@ jobs:
           umask 077
           printf "%s" "$SPARKLE_ED_PRIVATE_KEY" > "$KEY_FILE"
 
-          SIG_LINE=$(/tmp/sparkle/bin/sign_update -f "$KEY_FILE" dist/Imprint.dmg)
+          SIG_LINE=$(/tmp/sparkle/bin/sign_update -f "$KEY_FILE" dist/Captioneer.dmg)
           rm -f "$KEY_FILE"
           echo "$SIG_LINE"
 
@@ -130,7 +130,7 @@ jobs:
 
           VERSION="${GITHUB_REF_NAME#v}"
           PUBDATE=$(date -u +"%a, %d %b %Y %H:%M:%S +0000")
-          DMG_URL="https://github.com/jerefrer/imprint/releases/download/${GITHUB_REF_NAME}/Imprint.dmg"
+          DMG_URL="https://github.com/jerefrer/captioneer/releases/download/${GITHUB_REF_NAME}/Captioneer.dmg"
 
           # Régénère docs/appcast.xml (une seule <item>, la plus récente — c'est
           # tout ce dont Sparkle a besoin).
@@ -138,12 +138,12 @@ jobs:
           <?xml version="1.0" encoding="utf-8"?>
           <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
             <channel>
-              <title>Imprint</title>
-              <link>https://jerefrer.github.io/imprint/appcast.xml</link>
-              <description>Imprint updates feed</description>
+              <title>Captioneer</title>
+              <link>https://jerefrer.github.io/captioneer/appcast.xml</link>
+              <description>Captioneer updates feed</description>
               <language>en</language>
               <item>
-                <title>Imprint ${GITHUB_REF_NAME}</title>
+                <title>Captioneer ${GITHUB_REF_NAME}</title>
                 <pubDate>${PUBDATE}</pubDate>
                 <sparkle:version>${VERSION}</sparkle:version>
                 <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
@@ -193,8 +193,8 @@ jobs:
       - name: Create GitHub Release with DMG attached
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/Imprint.dmg
-          name: Imprint ${{ github.ref_name }}
+          files: dist/Captioneer.dmg
+          name: Captioneer ${{ github.ref_name }}
           generate_release_notes: true
           draft: false
           prerelease: false

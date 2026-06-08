@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-#  build_app.sh — assemble + signe + notarise CaptionExtractor.app
+#  build_app.sh — assemble + signe + notarise Captioneer.app
 #                 et produit un DMG « glisser dans Applications »
 #
 #  Usage :
@@ -13,7 +13,7 @@
 #
 #  Variables d'environnement (surcharge les valeurs par défaut) :
 #    SIGN_IDENTITY      "Developer ID Application: Jeremy Frere (3J4HCZ8V25)"
-#    KEYCHAIN_PROFILE   "CaptionExtractor-notarize"
+#    KEYCHAIN_PROFILE   "Captioneer-notarize"
 #    APPLE_ID           "frere.jeremy@gmail.com"
 #    TEAM_ID            "3J4HCZ8V25"
 # =============================================================================
@@ -22,12 +22,12 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 SRC="$HERE/app"
 DIST="$HERE/dist"
-APP_NAME="CaptionExtractor"
+APP_NAME="Captioneer"
 APP="$DIST/$APP_NAME.app"
-DMG="$DIST/CaptionExtractor.dmg"
+DMG="$DIST/Captioneer.dmg"
 
 SIGN_IDENTITY="${SIGN_IDENTITY:-Developer ID Application: Jeremy Frere (3J4HCZ8V25)}"
-KEYCHAIN_PROFILE="${KEYCHAIN_PROFILE:-CaptionExtractor-notarize}"
+KEYCHAIN_PROFILE="${KEYCHAIN_PROFILE:-Captioneer-notarize}"
 APPLE_ID="${APPLE_ID:-frere.jeremy@gmail.com}"
 TEAM_ID="${TEAM_ID:-3J4HCZ8V25}"
 
@@ -85,24 +85,24 @@ echo "→ Compilation de l'app Swift (release)"
     cd "$HERE"
     swift build -c release --arch arm64 2>&1 | sed 's/^/   /'
 )
-BIN="$HERE/.build/arm64-apple-macosx/release/CaptionExtractor"
-[ -x "$BIN" ] || { echo "❌ Binaire CaptionExtractor introuvable après compilation : $BIN" >&2; exit 5; }
+BIN="$HERE/.build/arm64-apple-macosx/release/Captioneer"
+[ -x "$BIN" ] || { echo "❌ Binaire Captioneer introuvable après compilation : $BIN" >&2; exit 5; }
 
 # --- 2. Assemblage du bundle .app -------------------------------------------
 echo "→ Assemblage du bundle .app"
 # Régénère l'icône .icns si elle manque OU si la source a été modifiée depuis
-ICNS="$SRC/CaptionExtractor.icns"
-ICON_SRC="$HERE/CaptionExtractor.icon/Assets/image-766264921340.jpg"
+ICNS="$SRC/Captioneer.icns"
+ICON_SRC="$(find "$HERE/Captioneer.icon/Assets" -maxdepth 1 -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \) 2>/dev/null | sort | head -1)"
 if [ ! -f "$ICNS" ] || { [ -f "$ICON_SRC" ] && [ "$ICON_SRC" -nt "$ICNS" ]; }; then
-    echo "  (régénération de CaptionExtractor.icns depuis la source)"
+    echo "  (régénération de Captioneer.icns depuis la source)"
     "$SRC/make_icns.sh"
 fi
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
 cp "$SRC/Info.plist"      "$APP/Contents/Info.plist"
-cp "$BIN"                 "$APP/Contents/MacOS/CaptionExtractor"
-cp "$SRC/CaptionExtractor.icns"    "$APP/Contents/Resources/CaptionExtractor.icns"
-chmod +x "$APP/Contents/MacOS/CaptionExtractor"
+cp "$BIN"                 "$APP/Contents/MacOS/Captioneer"
+cp "$SRC/Captioneer.icns"    "$APP/Contents/Resources/Captioneer.icns"
+chmod +x "$APP/Contents/MacOS/Captioneer"
 
 # Sparkle.framework (auto-updater) doit être embarqué dans Contents/Frameworks/
 SPARKLE_FW_SRC="$HERE/.build/arm64-apple-macosx/release/Sparkle.framework"
@@ -117,7 +117,7 @@ cp -R "$SPARKLE_FW_SRC" "$APP/Contents/Frameworks/"
 # ajouter @executable_path/../Frameworks dans ses rpaths. install_name_tool
 # retourne != 0 si l'entrée existe déjà (rebuild incrémental) ; on l'ignore.
 install_name_tool -add_rpath @executable_path/../Frameworks \
-    "$APP/Contents/MacOS/CaptionExtractor" 2>/dev/null || true
+    "$APP/Contents/MacOS/Captioneer" 2>/dev/null || true
 
 # --- 3. Signature de l'app (hardened runtime, requis pour notarisation) -----
 if [ "$DO_SIGN" -eq 1 ]; then
@@ -154,13 +154,13 @@ fi
 
 # --- 4. Construction du DMG (glisser-déposer dans Applications) -------------
 echo "→ Construction du DMG"
-STAGE="$(/usr/bin/mktemp -d /tmp/CaptionExtractor-dmg.XXXXXX)"
+STAGE="$(/usr/bin/mktemp -d /tmp/Captioneer-dmg.XXXXXX)"
 cp -R "$APP" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
 # Icône du VOLUME monté : un fichier .VolumeIcon.icns à la racine est
 # auto-détecté par Finder. (hdiutil n'expose plus l'option -volicon
 # depuis macOS Tahoe.)
-cp "$SRC/CaptionExtractor.icns" "$STAGE/.VolumeIcon.icns"
+cp "$SRC/Captioneer.icns" "$STAGE/.VolumeIcon.icns"
 /usr/bin/hdiutil create \
     -volname "$APP_NAME" \
     -srcfolder "$STAGE" \
@@ -173,8 +173,8 @@ rm -rf "$STAGE"
 # écrire l'icône dans la resource fork du fichier via Rez + SetFile.
 # La séquence est la recette canonique utilisée par create-dmg.
 echo "→ Icône custom sur le fichier .dmg"
-ICON_TMP="$(/usr/bin/mktemp -d /tmp/CaptionExtractor-icon.XXXXXX)"
-cp "$SRC/CaptionExtractor.icns" "$ICON_TMP/icon.icns"
+ICON_TMP="$(/usr/bin/mktemp -d /tmp/Captioneer-icon.XXXXXX)"
+cp "$SRC/Captioneer.icns" "$ICON_TMP/icon.icns"
 sips -i "$ICON_TMP/icon.icns" >/dev/null
 xcrun DeRez -only icns "$ICON_TMP/icon.icns" > "$ICON_TMP/icon.rsrc"
 xcrun Rez -append "$ICON_TMP/icon.rsrc" -o "$DMG"
